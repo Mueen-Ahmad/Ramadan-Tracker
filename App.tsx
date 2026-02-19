@@ -9,6 +9,12 @@ import DailyPage from './components/DailyPage';
 import ReviewPage from './components/ReviewPage';
 import EidPreparationPage from './components/EidPreparationPage';
 import FooterInfoPage from './components/FooterInfoPage';
+import AuthPage from './components/AuthPage';
+import InstallButton from './components/InstallButton';
+
+import { auth, db, onAuthStateChanged, signOut, doc, getDoc, setDoc } from './firebase';
+
+const STORAGE_KEY = 'ramadan_planner_data_v1';
 
 const INITIAL_DAILY_DATA: DailyData = {
   achievement: '',
@@ -20,29 +26,93 @@ const INITIAL_DAILY_DATA: DailyData = {
   checklist: new Array(CHECKLIST_ITEMS.length).fill(false)
 };
 
-const STORAGE_KEY = 'ramadan_planner_data_v2'; // Bumped version for schema change
+const getInitialState = (): AppState => {
+  const initialDaily: Record<number, DailyData> = {};
+  for (let i = 1; i <= 30; i++) initialDaily[i] = JSON.parse(JSON.stringify(INITIAL_DAILY_DATA));
+  return {
+    userName: '',
+    dailyData: initialDaily,
+    achievements: new Array(15).fill(''),
+    disappointments: new Array(15).fill(''),
+    reflections: ''
+  };
+};
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<string>('cover');
-  const [state, setState] = useState<AppState>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) return JSON.parse(saved);
-    
-    const initialDaily: Record<number, DailyData> = {};
-    for (let i = 1; i <= 30; i++) initialDaily[i] = JSON.parse(JSON.stringify(INITIAL_DAILY_DATA));
-    
-    return {
-      userName: '',
-      dailyData: initialDaily,
-      achievements: new Array(15).fill(''),
-      disappointments: new Array(15).fill(''),
-      reflections: ''
-    };
-  });
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
+  const [state, setState] = useState<AppState>(getInitialState());
 
+  // 1. Load from LocalStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        setState(JSON.parse(saved));
+      } catch (e) {
+        console.error("Local storage parse error", e);
+      }
+    }
+  }, []);
+
+  // 2. Handle Auth State and Sync
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      console.log("Auth State Changed:", currentUser ? "Logged In" : "Logged Out");
+      setUser(currentUser);
+      
+      if (currentUser) {
+        try {
+          const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+          if (userDoc.exists()) {
+            const cloudData = userDoc.data() as AppState;
+            setState(cloudData);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudData));
+          }
+        } catch (err) {
+          console.error("Firestore loading error:", err);
+        }
+      }
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // 3. Save to LocalStorage AND Firestore (if logged in)
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [state]);
+
+    if (user) {
+      setIsSyncing(true);
+      const timeoutId = setTimeout(async () => {
+        try {
+          await setDoc(doc(db, "users", user.uid), state);
+          setIsSyncing(false);
+        } catch (err) {
+          console.error("Firestore sync error:", err);
+          setIsSyncing(false);
+        }
+      }, 2000); 
+      return () => clearTimeout(timeoutId);
+    }
+  }, [state, user]);
+
+  const handleLogout = async () => {
+    if (confirm('আপনি কি লগআউট করতে চান? (লগআউট করলেও আপনার ডাটা এই ব্রাউজারে সেভ থাকবে)')) {
+      try {
+        setIsSyncing(false);
+        await signOut(auth);
+        setUser(null); // Force local state update
+        alert("সফলভাবে লগআউট করা হয়েছে।");
+      } catch (err) {
+        console.error("Logout error:", err);
+        alert("লগআউট করতে সমস্যা হয়েছে। দয়া করে পেজটি রিফ্রেশ করে আবার চেষ্টা করুন।");
+      }
+    }
+  };
 
   const updateDaily = useCallback((day: number, data: Partial<DailyData>) => {
     setState(prev => ({
@@ -53,6 +123,31 @@ const App: React.FC = () => {
       }
     }));
   }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#fdf8f4]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-14 h-14 border-4 border-[#1a8a3d] border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-[#1a8a3d] font-black text-xl">রমজান প্ল্যানার লোড হচ্ছে...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (showAuth) {
+    return (
+      <div className="relative">
+        <button 
+          onClick={() => setShowAuth(false)}
+          className="fixed top-6 right-6 z-[60] bg-white w-12 h-12 rounded-full shadow-xl flex items-center justify-center text-2xl font-bold border border-gray-100 hover:bg-gray-50 transition-all"
+        >
+          ✕
+        </button>
+        <AuthPage onSuccess={() => setShowAuth(false)} />
+      </div>
+    );
+  }
 
   const renderPage = () => {
     switch (currentPage) {
@@ -80,15 +175,50 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center bg-[#f3f4f6] p-2 sm:p-4 pb-24 text-gray-900">
-      <div className="w-full max-w-4xl bg-white shadow-2xl rounded-lg overflow-hidden border border-gray-200">
+    <div className="min-h-screen flex flex-col items-center bg-gray-100 p-2 sm:p-4 pb-24 text-gray-900 font-sans">
+      {/* User Status Bar */}
+      <div className="w-full max-w-4xl flex justify-between items-center mb-4 px-4 py-3 bg-white rounded-2xl shadow-sm border border-gray-200 no-print">
+        <div className="flex items-center gap-3">
+          <div className={`w-3 h-3 rounded-full ${user ? (isSyncing ? 'bg-orange-500 animate-pulse' : 'bg-green-500') : 'bg-gray-300'}`}></div>
+          <div className="flex flex-col">
+            <span className="text-sm font-black text-gray-700 leading-none mb-1">
+              {user ? (isSyncing ? 'সিঙ্ক হচ্ছে...' : 'অনলাইনে সেভ আছে') : 'অফলাইন মুড'}
+            </span>
+            <InstallButton />
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-3">
+          {user ? (
+            <div className="flex items-center gap-3">
+              <span className="hidden sm:inline text-xs font-bold text-[#1a8a3d]">ID: {user.email?.split('@')[0]}</span>
+              <button 
+                onClick={handleLogout}
+                className="text-sm font-black text-red-600 bg-red-50 px-4 py-2 rounded-xl border-2 border-red-100 hover:bg-red-100 transition-all active:scale-95"
+              >
+                লগআউট
+              </button>
+            </div>
+          ) : (
+            <button 
+              onClick={() => setShowAuth(true)}
+              className="text-sm font-black text-white bg-[#1a8a3d] px-5 py-2.5 rounded-xl shadow-lg shadow-[#1a8a3d]/20 hover:bg-[#157131] transition-all active:scale-95 flex items-center gap-2"
+            >
+              <span className="text-lg">☁️</span> সিঙ্ক করুন
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="w-full max-w-4xl bg-white shadow-2xl rounded-3xl overflow-hidden border border-gray-200">
         {renderPage()}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-200 p-3 flex justify-around items-center no-print z-50 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
+      {/* Navigation Tabs */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-200 p-4 flex justify-around items-center no-print z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.1)]">
         <button 
           onClick={() => setCurrentPage('cover')}
-          className={`px-4 py-2 rounded-lg font-bold transition-all ${currentPage === 'cover' ? 'bg-[#1a8a3d] text-white shadow-md' : 'text-gray-800 hover:bg-gray-100'}`}
+          className={`px-5 py-2.5 rounded-xl font-black transition-all ${currentPage === 'cover' ? 'bg-[#1a8a3d] text-white shadow-lg' : 'text-gray-700 hover:bg-gray-100'}`}
         >
           হোম
         </button>
@@ -97,7 +227,7 @@ const App: React.FC = () => {
             <button
               key={d}
               onClick={() => setCurrentPage(`day-${d}`)}
-              className={`px-4 py-2 rounded-lg font-bold whitespace-nowrap transition-all ${currentPage === `day-${d}` ? 'bg-[#1a8a3d] text-white shadow-md' : 'text-gray-800 hover:bg-gray-100'}`}
+              className={`px-5 py-2.5 rounded-xl font-black whitespace-nowrap transition-all ${currentPage === `day-${d}` ? 'bg-[#1a8a3d] text-white shadow-lg' : 'text-gray-700 hover:bg-gray-100'}`}
             >
               দিন {d}
             </button>
@@ -105,7 +235,7 @@ const App: React.FC = () => {
         </div>
         <button 
           onClick={() => setCurrentPage('review')}
-          className={`px-4 py-2 rounded-lg font-bold transition-all ${['review', 'eid-prep'].includes(currentPage) ? 'bg-[#1a8a3d] text-white shadow-md' : 'text-gray-800 hover:bg-gray-100'}`}
+          className={`px-5 py-2.5 rounded-xl font-black transition-all ${['review', 'eid-prep'].includes(currentPage) ? 'bg-[#1a8a3d] text-white shadow-lg' : 'text-gray-700 hover:bg-gray-100'}`}
         >
           রিভিউ
         </button>

@@ -18,7 +18,7 @@ const ReviewPage: React.FC<Props> = ({ state, setState, onBack, onNext }) => {
 
   return (
     <div className="p-8 pb-24 bg-white min-h-[800px] text-gray-900">
-       <h2 className="text-center text-[#1a8a3d] text-4xl font-black mb-12 tracking-tight">এই রামাযানের প্রাপ্তি/অপ্রাপ্তি</h2>
+       <h2 className="text-center text-[#1a8a3d] text-4xl font-black mb-12 tracking-tight">এই রমজানের প্রাপ্তি/অপ্রাপ্তি</h2>
 
        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mb-10">
           <div className="border-2 border-green-200 rounded-2xl overflow-hidden shadow-sm">
@@ -62,7 +62,7 @@ const ReviewPage: React.FC<Props> = ({ state, setState, onBack, onNext }) => {
             value={state.reflections}
             onChange={e => setState(s => ({...s, reflections: e.target.value}))}
             className="w-full h-64 border-2 border-white p-6 focus:ring-0 text-gray-800 bg-white rounded-xl shadow-sm text-lg italic leading-relaxed font-medium"
-            placeholder="আপনার রামাযান পরবর্তী ভাবনা ও ভবিষ্যৎ পরিকল্পনা এখানে লিপিবদ্ধ করুন..."
+            placeholder="আপনার রমজান পরবর্তী ভাবনা ও ভবিষ্যৎ পরিকল্পনা এখানে লিপিবদ্ধ করুন..."
           />
        </div>
 

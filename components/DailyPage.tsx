@@ -39,7 +39,7 @@ const DailyPage: React.FC<Props> = ({ day, data, onUpdate, onNext, onBack }) => 
       <div className="flex justify-between items-center mb-6">
         <button onClick={onBack} className="text-gray-800 font-bold hover:text-[#1a8a3d] transition-colors p-2">← পূর্ববর্তী</button>
         <div className="bg-[#1a8a3d] text-white px-8 py-2 rounded-full font-bold text-xl shadow-md border-2 border-[#157131]">
-          {day} রামাযান
+          {day} রমজান
         </div>
         <button onClick={onNext} className="text-gray-800 font-bold hover:text-[#1a8a3d] transition-colors p-2">পরবর্তী →</button>
       </div>
