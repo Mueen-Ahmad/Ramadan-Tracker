@@ -7,6 +7,7 @@ import InstructionPage from './components/InstructionPage';
 import DoDontPage from './components/DoDontPage';
 import DailyPage from './components/DailyPage';
 import ReviewPage from './components/ReviewPage';
+import EidPreparationPage from './components/EidPreparationPage';
 import FooterInfoPage from './components/FooterInfoPage';
 
 const INITIAL_DAILY_DATA: DailyData = {
@@ -58,8 +59,9 @@ const App: React.FC = () => {
       case 'cover': return <CoverPage onStart={() => setCurrentPage('intro')} name={state.userName} setName={(n) => setState(s => ({...s, userName: n}))} />;
       case 'intro': return <InstructionPage onNext={() => setCurrentPage('dodont')} onBack={() => setCurrentPage('cover')} />;
       case 'dodont': return <DoDontPage onNext={() => setCurrentPage('day-1')} onBack={() => setCurrentPage('intro')} />;
-      case 'review': return <ReviewPage state={state} setState={setState} onBack={() => setCurrentPage('day-30')} onNext={() => setCurrentPage('info')} />;
-      case 'info': return <FooterInfoPage onBack={() => setCurrentPage('review')} />;
+      case 'review': return <ReviewPage state={state} setState={setState} onBack={() => setCurrentPage('day-30')} onNext={() => setCurrentPage('eid-prep')} />;
+      case 'eid-prep': return <EidPreparationPage onBack={() => setCurrentPage('review')} onNext={() => setCurrentPage('info')} />;
+      case 'info': return <FooterInfoPage onBack={() => setCurrentPage('eid-prep')} />;
       default:
         if (currentPage.startsWith('day-')) {
           const day = parseInt(currentPage.split('-')[1]);
@@ -103,7 +105,7 @@ const App: React.FC = () => {
         </div>
         <button 
           onClick={() => setCurrentPage('review')}
-          className={`px-4 py-2 rounded-lg font-bold transition-all ${currentPage === 'review' ? 'bg-[#1a8a3d] text-white shadow-md' : 'text-gray-800 hover:bg-gray-100'}`}
+          className={`px-4 py-2 rounded-lg font-bold transition-all ${['review', 'eid-prep'].includes(currentPage) ? 'bg-[#1a8a3d] text-white shadow-md' : 'text-gray-800 hover:bg-gray-100'}`}
         >
           রিভিউ
         </button>
