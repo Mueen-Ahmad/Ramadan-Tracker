@@ -1,0 +1,5 @@
+{
+  "name": "Ramadan Planner - As-Sunnah Foundation",
+  "description": "A digital 1:1 interactive clone of the As-Sunnah Foundation Ramadan Planner, featuring daily trackers for Salah, Quran, and tasks with local persistence.",
+  "requestFramePermissions": []
+}
