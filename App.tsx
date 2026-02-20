@@ -60,8 +60,7 @@ const App: React.FC = () => {
 
   // 2. Handle Auth State and Cloud Data Fetch
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      console.log("Firebase Auth Status:", currentUser ? "Logged In" : "Logged Out");
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser: any) => {
       setUser(currentUser);
       
       if (currentUser) {
@@ -69,7 +68,6 @@ const App: React.FC = () => {
           const userDoc = await getDoc(doc(db, "users", currentUser.uid));
           if (userDoc.exists()) {
             const cloudData = userDoc.data() as AppState;
-            // Merge cloud data with local if needed, here we prioritize cloud for logged in users
             setState(cloudData);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudData));
           }
@@ -79,30 +77,35 @@ const App: React.FC = () => {
       }
       setLoading(false);
     });
-    return () => unsubscribe();
+
+    // Timeout for loading: if Firebase is slow, proceed with offline data
+    const timeout = setTimeout(() => {
+      setLoading(false);
+    }, 5000);
+
+    return () => {
+      unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   // 3. Save to LocalStorage (Always) and Firestore (Only if Logged In)
   useEffect(() => {
-    // Local persistence (Offline) - Always happens
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 
-    // Online Sync - Only if user is logged in
     if (user) {
       setIsSyncing(true);
       const timeoutId = setTimeout(async () => {
         try {
-          // Double check user still exists before sending
           if (auth.currentUser) {
             await setDoc(doc(db, "users", auth.currentUser.uid), state);
             setIsSyncing(false);
-            console.log("Cloud sync successful");
           }
         } catch (err) {
           console.error("Cloud sync error:", err);
           setIsSyncing(false);
         }
-      }, 3000); // 3 second debounce to reduce writes
+      }, 3000);
       return () => clearTimeout(timeoutId);
     } else {
       setIsSyncing(false);
@@ -115,7 +118,7 @@ const App: React.FC = () => {
       try {
         setIsSyncing(false);
         await signOut(auth);
-        setUser(null); // Explicitly clear local user state
+        setUser(null); 
         alert("সফলভাবে লগআউট করা হয়েছে। এখন আপনি অফলাইন মুডে আছেন।");
       } catch (err) {
         console.error("Logout error:", err);
@@ -186,7 +189,6 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col items-center bg-gray-100 p-2 sm:p-4 pb-24 text-gray-900 font-sans">
-      {/* Dynamic Status Bar */}
       <div className="w-full max-w-4xl flex justify-between items-center mb-4 px-4 py-3 bg-white rounded-2xl shadow-sm border border-gray-200 no-print">
         <div className="flex items-center gap-3">
           <div className={`w-3 h-3 rounded-full ${user ? (isSyncing ? 'bg-orange-500 animate-pulse' : 'bg-green-500') : 'bg-gray-400'}`}></div>
@@ -224,7 +226,6 @@ const App: React.FC = () => {
         {renderPage()}
       </div>
 
-      {/* Navigation Tabs */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-200 p-4 flex justify-around items-center no-print z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.1)]">
         <button 
           onClick={() => setCurrentPage('cover')}
