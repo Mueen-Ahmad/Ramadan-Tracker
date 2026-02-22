@@ -46,7 +46,7 @@ export const DAILY_CONTENT: Record<number, StaticDayContent> = {
   },
   2: {
     day: 2,
-    ayatAr: "اَفَحَسِبۡتُمۡ اَنَّمَا خَلَقۡنٰكُمۡ عَبَثًا وَّ اَنَّكُمۡ اِلَیۡنَا لَا تُرۡجَعُوۡنَ",
+    ayatAr: "## There some font related problem of this Ayah. We will fix it as soon as possible In sha Allah. ##",
     ayatBn: "তোমরা কি ধারণা করো যে, আমি তোমাদেরকে অনর্থক সৃষ্টি করেছি এবং তোমরা আমার কাছে ফিরে আসবে না?",
     ayatRef: "[আল-মুমিনুন: ১১৫]",
     hadithBn: "আল্লাহ তা'আলা বলেছেন, 'বনী আদমের প্রতিটি কাজ তার নিজের জন্যেই- ব্যতিক্রম সিয়াম। তা আমার জন্য, আমি নিজেই তার পুরস্কার দেব।",
